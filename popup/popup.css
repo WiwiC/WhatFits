@@ -670,3 +670,78 @@ body {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+/* Disabled Tab */
+.tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Coming Soon Placeholder */
+.coming-soon-placeholder {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.coming-soon-placeholder h3 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.coming-soon-placeholder p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Context Used Transparency Section */
+.context-used-section {
+  margin-top: 12px;
+  padding: 10px;
+  background: var(--surface-tertiary);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.context-used-section summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 4px 0;
+}
+
+.context-used-section summary:hover {
+  color: var(--accent);
+}
+
+.context-content {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
+.context-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.context-group:last-child {
+  margin-bottom: 0;
+}
+
+.context-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.context-values {
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+}

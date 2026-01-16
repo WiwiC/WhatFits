@@ -12,33 +12,18 @@
   <div class="container">
     <header class="header">
       <h1 class="logo">WhatFits</h1>
-      <p class="tagline">Preference alignment check</p>
+      <p class="tagline">Ask about any product</p>
     </header>
 
     <nav class="tabs">
-      <button class="tab active" data-tab="analysis">Product analysis</button>
-      <button class="tab" data-tab="chat">Ask Agent</button>
-      <button class="tab" data-tab="cart">Cart analysis</button>
+      <button class="tab active" data-tab="chat">Ask Agent</button>
+      <button class="tab disabled" data-tab="cart" disabled>Cart Analysis (soon)</button>
       <button class="tab" data-tab="settings">Settings</button>
     </nav>
 
     <main class="content">
-      <!-- Analysis Tab -->
-      <section id="analysis" class="tab-content active">
-        <div class="status-bar">
-          <span class="status-indicator"></span>
-          <span class="status-text">Detecting product...</span>
-        </div>
-        <div class="result-container">
-          <!-- Results will be injected here -->
-        </div>
-        <button class="btn-primary" id="check-alignment" disabled>
-          Check Alignment
-        </button>
-      </section>
-
-      <!-- Chat Tab -->
-      <section id="chat" class="tab-content">
+      <!-- Chat Tab (Default) -->
+      <section id="chat" class="tab-content active">
         <div class="chat-header">
           <div class="status-bar">
             <span class="status-indicator"></span>
@@ -47,28 +32,22 @@
         </div>
         <div id="chat-messages" class="chat-messages">
           <div class="chat-bubble system">
-            Navigation to a product page and click "Start Chat" to ask questions!
+            Navigate to a product page and click "Load Product" to start asking questions!
           </div>
         </div>
         <div class="chat-input-area">
           <input type="text" id="chat-input" placeholder="Ask about ingredients, timing..." disabled>
           <button id="chat-send" disabled>➤</button>
         </div>
-        <button id="start-chat-btn" class="btn-primary" disabled>Start Chat</button>
+        <button id="start-chat-btn" class="btn-primary" disabled>Load Product</button>
       </section>
 
-      <!-- Cart Tab -->
+      <!-- Cart Tab (Coming Soon) -->
       <section id="cart" class="tab-content">
-        <div class="status-bar">
-          <span class="status-indicator"></span>
-          <span class="status-text">Navigate to cart page</span>
+        <div class="coming-soon-placeholder">
+          <h3>🛒 Cart Coherence</h3>
+          <p>Coming soon! This feature will analyze your entire cart for redundancies and goal alignment.</p>
         </div>
-        <div class="result-container">
-          <!-- Cart results will be injected here -->
-        </div>
-        <button class="btn-primary" id="check-cart" disabled>
-          Check Cart Coherence
-        </button>
       </section>
 
       <!-- Settings Tab -->

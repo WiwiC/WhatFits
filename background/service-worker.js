@@ -13,3 +13,15 @@ chrome.runtime.onInstalled.addListener((details) => {
     console.log('[WhatFits] Extension updated');
   }
 });
+
+// Listen for tab URL changes
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Only notify on URL change, not other updates
+  if (changeInfo.url) {
+    // Store the new URL for the popup to detect
+    chrome.storage.session.set({
+      whatfits_current_url: changeInfo.url,
+      whatfits_url_changed: true
+    });
+  }
+});

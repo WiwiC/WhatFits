@@ -4,19 +4,17 @@
  */
 
 import { getUserContext, saveUserContext, getApiKey, saveApiKey } from '../lib/storage.js';
-import { analyzeProductAlignment, analyzeCartCoherence, chatWithProduct } from '../lib/llm.js';
-import { preprocessProductData } from '../lib/rules.js';
+import { chatWithProduct } from '../lib/llm.js';
 
 // DOM Elements
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 const contextForm = document.getElementById('context-form');
-const checkAlignmentBtn = document.getElementById('check-alignment');
-const checkCartBtn = document.getElementById('check-cart');
 
 // Current tab ID for messaging
 let currentTabId = null;
 let currentProductData = null; // Store for Chat
+let previousProductData = null; // Store previous product for comparison
 
 // Tab switching
 tabs.forEach(tab => {
@@ -139,299 +137,28 @@ async function checkCurrentPage() {
 
     const isMyProtein = url.includes('fr.myprotein.com');
     const isProductPage = isMyProtein && (url.includes('/p/') || url.includes('/sports-nutrition/'));
-    const isCartPage = isMyProtein && (url.includes('/cart') || url.includes('/panier') || url.includes('/checkout') || url.includes('/account') || url.includes('/basket'));
 
-    // Update Analysis tab status
-    const analysisStatus = document.querySelector('#analysis .status-indicator');
-    const analysisText = document.querySelector('#analysis .status-text');
+    // Update Chat tab status
+    const chatStatus = document.getElementById('chat-status-text');
+    const startChatBtn = document.getElementById('start-chat-btn');
 
     if (isProductPage) {
-      analysisStatus.classList.add('success');
-      analysisText.textContent = 'Product page detected';
-      checkAlignmentBtn.disabled = false;
+      if (chatStatus) chatStatus.textContent = 'Product page detected';
+      if (startChatBtn) startChatBtn.disabled = false;
     } else if (isMyProtein) {
-      analysisStatus.classList.add('warning');
-      analysisText.textContent = 'Navigate to a product page';
-      checkAlignmentBtn.disabled = true;
+      if (chatStatus) chatStatus.textContent = 'Navigate to a product page';
+      if (startChatBtn) startChatBtn.disabled = true;
     } else {
-      analysisStatus.classList.add('error');
-      analysisText.textContent = 'Not on MyProtein';
-      checkAlignmentBtn.disabled = true;
-    }
-
-    // Update Cart tab status
-    const cartStatus = document.querySelector('#cart .status-indicator');
-    const cartText = document.querySelector('#cart .status-text');
-
-    if (isCartPage) {
-      cartStatus.classList.add('success');
-      cartText.textContent = 'Cart page detected';
-      checkCartBtn.disabled = false;
-    } else if (isMyProtein) {
-      cartStatus.classList.add('warning');
-      cartText.textContent = 'Navigate to cart page';
-      checkCartBtn.disabled = true;
-    } else {
-      cartStatus.classList.add('error');
-      cartText.textContent = 'Not on MyProtein';
-      checkCartBtn.disabled = true;
+      if (chatStatus) chatStatus.textContent = 'Not on MyProtein';
+      if (startChatBtn) startChatBtn.disabled = true;
     }
   } catch (error) {
     console.error('Error checking current page:', error);
   }
 }
 
-// Handle Check Alignment button
-checkAlignmentBtn.addEventListener('click', async () => {
-  if (!currentTabId) return;
+// Product analysis removed - chat-first UX
 
-  const resultContainer = document.querySelector('#analysis .result-container');
-  const statusText = document.querySelector('#analysis .status-text');
-
-  // Show loading state
-  checkAlignmentBtn.disabled = true;
-  checkAlignmentBtn.textContent = 'Analyzing...';
-  statusText.textContent = 'Extracting product data...';
-
-  try {
-    // Step 1: Extract product data from page
-    const response = await chrome.tabs.sendMessage(currentTabId, { type: 'EXTRACT_PRODUCT' });
-
-    if (!response.success) {
-      throw new Error('Failed to extract product data');
-    }
-
-    let productData = response.data;
-
-    // Store for Chat & Enable
-    currentProductData = productData;
-    const startChatBtn = document.getElementById('start-chat-btn');
-    const chatStatus = document.getElementById('chat-status-text');
-    if (startChatBtn) {
-      startChatBtn.disabled = false;
-      if (chatStatus) chatStatus.textContent = `Talking about: ${productData.title ? productData.title.substring(0, 25) + '...' : 'this product'}`;
-    }
-
-    statusText.textContent = 'Preprocessing data...';
-
-    // Step 2: Preprocess data (deduplication)
-    // We still call this for local display integrity, even though LLM logic re-runs it
-    productData = preprocessProductData(productData);
-
-    statusText.textContent = 'Analyzing with AI...';
-
-    // Step 3: Get user context and API key
-    const userContext = await getUserContext();
-    const apiKey = await getApiKey();
-
-    // Step 4: Call LLM for analysis
-    const analysis = await analyzeProductAlignment(productData, userContext, apiKey);
-
-    // Step 5: Display combined results
-    displayAnalysisResult(productData, analysis, resultContainer);
-    statusText.textContent = analysis.error ? 'Analysis limited' : 'Analysis complete';
-
-  } catch (error) {
-    console.error('Error analyzing product:', error);
-    resultContainer.innerHTML = `<p class="error-text">Error: ${error.message}</p>`;
-    statusText.textContent = 'Analysis failed';
-  } finally {
-    checkAlignmentBtn.disabled = false;
-    checkAlignmentBtn.textContent = 'Check Alignment';
-  }
-});
-
-// Handle Check Cart button
-checkCartBtn.addEventListener('click', async () => {
-  if (!currentTabId) return;
-
-  const resultContainer = document.querySelector('#cart .result-container');
-  const statusText = document.querySelector('#cart .status-text');
-
-  checkCartBtn.disabled = true;
-  checkCartBtn.textContent = 'Analyzing...';
-  statusText.textContent = 'Extracting cart data...';
-
-  try {
-    const response = await chrome.tabs.sendMessage(currentTabId, { type: 'EXTRACT_CART' });
-    if (!response.success) throw new Error('Failed to extract cart data');
-
-    const cartData = response.data;
-
-    // Deep Enrichment Step
-    if (cartData.items && cartData.items.length > 0) {
-      statusText.textContent = `Fetching details for ${cartData.items.length} items...`;
-      try {
-        const enrichResponse = await chrome.tabs.sendMessage(currentTabId, {
-          type: 'ENRICH_CART',
-          items: cartData.items
-        });
-
-        if (enrichResponse && enrichResponse.success) {
-          cartData.items = enrichResponse.data;
-          console.log('[WhatFits] Cart enriched with ingredient details');
-        }
-      } catch (err) {
-        console.warn('Deep enrichment failed, falling back to shallow analysis:', err);
-      }
-    }
-
-    statusText.textContent = 'Analyzing cart coherence...';
-
-    const userContext = await getUserContext();
-    const apiKey = await getApiKey();
-
-    const analysis = await analyzeCartCoherence(cartData, userContext, apiKey);
-
-    displayCartCoherenceResult(cartData, analysis, resultContainer);
-    statusText.textContent = analysis.error ? 'Analysis limited' : 'Analysis complete';
-
-  } catch (error) {
-    console.error('Error analyzing cart:', error);
-    resultContainer.innerHTML = `<p class="error-text">Error: ${error.message}</p>`;
-    statusText.textContent = 'Analysis failed';
-  } finally {
-    checkCartBtn.disabled = false;
-    checkCartBtn.textContent = 'Check Cart Coherence';
-  }
-});
-
-// Display detailed analysis result
-function displayAnalysisResult(productData, analysis, container) {
-  const alignmentClass = analysis.alignment || 'neutral';
-  const confidencePercent = Math.round((analysis.alignment_confidence || 0) * 100);
-  const dataQuality = analysis.data_quality || 0;
-
-  let html = `
-    <div class="result-card">
-      <div class="result-header">
-        <h3>${productData.title || 'Unknown Product'}</h3>
-        ${productData.price ? `<span class="price">${productData.price}</span>` : ''}
-      </div>
-
-      <div class="result-section alignment-section">
-        <span class="alignment-badge ${alignmentClass}">${alignmentClass}</span>
-        <div class="meta-scores">
-          <span class="confidence-text" title="AI Confidence">Conf: ${confidencePercent}%</span>
-          <span class="confidence-text" title="Data Quality">Data: ${dataQuality}%</span>
-        </div>
-      </div>
-  `;
-
-  if (analysis.reasons && analysis.reasons.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Analysis</h4>
-        <ul class="reasons-list">
-          ${analysis.reasons.map(r => `<li>${r}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.preference_matches && analysis.preference_matches.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Matches Preferences</h4>
-        <ul class="tag-list">
-           ${analysis.preference_matches.map(m => `<li class="tag tag-info">${m}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.preference_mismatches && analysis.preference_mismatches.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Mismatches</h4>
-        <ul class="tag-list">
-           ${analysis.preference_mismatches.map(m => `<li class="tag tag-warn">${m}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.considerations && analysis.considerations.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Considerations</h4>
-        <ul class="considerations-list">
-          ${analysis.considerations.map(c => `<li>${c}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.missing_data && analysis.missing_data.length > 0) {
-    html += `
-      <div class="result-section missing-data">
-        <h4>Missing Information</h4>
-        <p>${analysis.missing_data.join(', ')}</p>
-      </div>
-    `;
-  }
-
-  html += '</div>';
-  container.innerHTML = html;
-}
-
-// Display cart coherence result
-function displayCartCoherenceResult(cartData, analysis, container) {
-  const score = analysis.stack_alignment_score || 0;
-  let scoreClass = 'neutral';
-  if (score > 75) scoreClass = 'aligned';
-  if (score < 40) scoreClass = 'misaligned';
-
-  let html = `
-    <div class="result-card">
-      <div class="result-header">
-        <h3>Cart Analysis</h3>
-        <span class="price">${cartData.total || ''}</span>
-      </div>
-
-      <div class="result-section alignment-section">
-        <span class="alignment-badge ${scoreClass}">Score: ${score}/100</span>
-      </div>
-  `;
-
-  if (analysis.redundancies && analysis.redundancies.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Redundancies Identified</h4>
-        <ul class="warning-list">
-          ${analysis.redundancies.map(r => `<li>${r}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.goal_mismatches && analysis.goal_mismatches.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Goal Mismatches</h4>
-        <ul class="warning-list">
-          ${analysis.goal_mismatches.map(m => `<li>${m}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  if (analysis.suggested_actions && analysis.suggested_actions.length > 0) {
-    html += `
-      <div class="result-section">
-        <h4>Suggested Actions</h4>
-        <ul class="considerations-list">
-          ${analysis.suggested_actions.map(a => `<li>${a}</li>`).join('')}
-        </ul>
-      </div>
-    `;
-  }
-
-  html += '</div>';
-  container.innerHTML = html;
-}
-
-// Initialize
 // Initialize & Chat Logic
 document.addEventListener('DOMContentLoaded', async () => {
   await loadContext();
@@ -447,16 +174,158 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentChatHistory = [];
   let isChatActive = false;
 
-  // Start Chat Handler
-  if (startChatBtn) {
-    startChatBtn.addEventListener('click', () => {
-      isChatActive = true;
-      startChatBtn.style.display = 'none';
-      chatInput.disabled = false;
-      chatSendBtn.disabled = false;
-      chatInput.focus();
+  // Session persistence keys
+  const SESSION_KEYS = {
+    CHAT_HISTORY: 'whatfits_chat_history',
+    PRODUCT_DATA: 'whatfits_product_data',
+    PREVIOUS_PRODUCT_DATA: 'whatfits_previous_product_data',
+    CHAT_ACTIVE: 'whatfits_chat_active'
+  };
 
-      addChatMessage('system', `Ready to discuss ${currentProductData?.title || 'this product'}! Ask away.`);
+  // Load persisted session on popup open
+  async function loadChatSession() {
+    try {
+      const session = await chrome.storage.session.get([
+        SESSION_KEYS.CHAT_HISTORY,
+        SESSION_KEYS.PRODUCT_DATA,
+        SESSION_KEYS.PREVIOUS_PRODUCT_DATA,
+        SESSION_KEYS.CHAT_ACTIVE
+      ]);
+
+      if (session[SESSION_KEYS.CHAT_ACTIVE] && session[SESSION_KEYS.PRODUCT_DATA]) {
+        currentProductData = session[SESSION_KEYS.PRODUCT_DATA];
+        previousProductData = session[SESSION_KEYS.PREVIOUS_PRODUCT_DATA] || null;
+        currentChatHistory = session[SESSION_KEYS.CHAT_HISTORY] || [];
+        isChatActive = true;
+
+        // Restore UI state
+        startChatBtn.style.display = 'none';
+        chatInput.disabled = false;
+        chatSendBtn.disabled = false;
+        if (chatStatus) chatStatus.textContent = `Loaded: ${currentProductData?.title?.substring(0, 30) || 'Product'}...`;
+
+        // Restore chat messages
+        chatMessages.innerHTML = ''; // Clear default
+        currentChatHistory.forEach(msg => {
+          addChatMessage(msg.role, msg.content, false);
+        });
+      }
+    } catch (err) {
+      console.log('No persisted session found');
+    }
+  }
+
+  // Save session after changes
+  async function saveChatSession() {
+    try {
+      await chrome.storage.session.set({
+        [SESSION_KEYS.CHAT_HISTORY]: currentChatHistory,
+        [SESSION_KEYS.PRODUCT_DATA]: currentProductData,
+        [SESSION_KEYS.PREVIOUS_PRODUCT_DATA]: previousProductData,
+        [SESSION_KEYS.CHAT_ACTIVE]: isChatActive
+      });
+    } catch (err) {
+      console.error('Error saving session:', err);
+    }
+  }
+
+  // Clear session
+  async function clearChatSession() {
+    try {
+      await chrome.storage.session.remove([
+        SESSION_KEYS.CHAT_HISTORY,
+        SESSION_KEYS.PRODUCT_DATA,
+        SESSION_KEYS.CHAT_ACTIVE
+      ]);
+    } catch (err) {
+      console.error('Error clearing session:', err);
+    }
+  }
+
+  // Load persisted session
+  await loadChatSession();
+
+  // Check if current page is different from loaded product (for when popup reopens after navigation)
+  async function checkForPageChange() {
+    if (!isChatActive || !currentProductData?.url) return;
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.url) return;
+
+      const currentUrl = tab.url;
+      const loadedUrl = currentProductData.url;
+
+      // Compare URLs (normalize by removing query params for comparison)
+      const currentBase = currentUrl.split('?')[0];
+      const loadedBase = loadedUrl.split('?')[0];
+
+      if (currentBase !== loadedBase) {
+        addChatMessage('system', '📍 You are now on a different page. Click "Load New Product" to chat about this product instead.');
+
+        // Show reload button
+        startChatBtn.style.display = 'block';
+        startChatBtn.textContent = 'Load New Product';
+        startChatBtn.disabled = false;
+
+        // Update status
+        if (chatStatus) chatStatus.textContent = 'Different page detected';
+      }
+    } catch (err) {
+      console.log('Could not check page change:', err);
+    }
+  }
+
+  // Check on popup open
+  await checkForPageChange();
+
+  // Load Product Handler - extracts product data and enables chat
+  if (startChatBtn) {
+    startChatBtn.addEventListener('click', async () => {
+      if (!currentTabId) {
+        addChatMessage('system', 'Please navigate to a product page first.');
+        return;
+      }
+
+      startChatBtn.disabled = true;
+      startChatBtn.textContent = 'Loading...';
+
+      try {
+        // Extract product data from page
+        const response = await chrome.tabs.sendMessage(currentTabId, { type: 'EXTRACT_PRODUCT' });
+
+        if (!response.success) {
+          throw new Error('Could not extract product data');
+        }
+
+        // Store current as previous before loading new
+        if (currentProductData) {
+          previousProductData = currentProductData;
+        }
+
+        currentProductData = response.data;
+        isChatActive = true;
+        // Keep chat history for context continuity
+        startChatBtn.style.display = 'none';
+        chatInput.disabled = false;
+        chatSendBtn.disabled = false;
+        chatInput.focus();
+
+        if (chatStatus) {
+          chatStatus.textContent = `Loaded: ${currentProductData?.title?.substring(0, 30) || 'Product'}...`;
+        }
+
+        const welcomeMsg = { role: 'system', content: `Loaded "${currentProductData?.title || 'product'}"! Ask me anything about it.` };
+        addChatMessage(welcomeMsg.role, welcomeMsg.content);
+        currentChatHistory.push(welcomeMsg);
+        await saveChatSession();
+
+      } catch (err) {
+        console.error('Error loading product:', err);
+        addChatMessage('system', 'Could not load product data. Make sure you are on a product page.');
+        startChatBtn.disabled = false;
+        startChatBtn.textContent = 'Load Product';
+      }
     });
   }
 
@@ -466,12 +335,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!text) return;
 
     // UI Update
+    const userMsg = { role: 'user', content: text };
     addChatMessage('user', text);
     chatInput.value = '';
     chatInput.disabled = true; // Disable while thinking
 
-    // Add user message to history
-    currentChatHistory.push({ role: 'user', content: text });
+    // Add user message to history and persist
+    currentChatHistory.push(userMsg);
+    await saveChatSession();
 
     // Show persistent "Thinking..." indicator
     const thinkingId = addChatMessage('system', 'Thinking...');
@@ -480,15 +351,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const userContext = await getUserContext();
       const apiKey = await getApiKey();
 
-      const response = await chatWithProduct(currentChatHistory, currentProductData, userContext, apiKey);
+      const response = await chatWithProduct(currentChatHistory, currentProductData, previousProductData, userContext, apiKey);
 
       // Remove thinking indicator
       const thinkingEl = document.querySelector(`[data-msg-id="${thinkingId}"]`);
       if (thinkingEl) thinkingEl.remove();
 
-      // Add AI Response
+      // Add AI Response and persist
       addChatMessage('assistant', response.content);
       currentChatHistory.push(response);
+      await saveChatSession();
 
     } catch (err) {
       addChatMessage('system', 'Error connecting to AI.');
@@ -504,14 +376,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') handleSendMessage();
   });
 
-  function addChatMessage(role, text) {
+  function addChatMessage(role, text, scroll = true) {
     const div = document.createElement('div');
     div.className = `chat-bubble ${role}`;
     div.textContent = text;
     const id = Date.now();
     div.dataset.msgId = id;
     chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (scroll) chatMessages.scrollTop = chatMessages.scrollHeight;
     return id;
   }
 });
