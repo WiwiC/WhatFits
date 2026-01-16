@@ -218,10 +218,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         chatSendBtn.disabled = false;
         if (chatStatus) chatStatus.textContent = `Loaded: ${currentProductData?.title?.substring(0, 30) || 'Product'}...`;
 
-        // Restore chat messages
+        // Restore chat messages (no animation for restored messages)
         chatMessages.innerHTML = ''; // Clear default
         currentChatHistory.forEach(msg => {
-          addChatMessage(msg.role, msg.content, false);
+          addChatMessage(msg.role, msg.content, false, false);
         });
       }
     } catch (err) {
@@ -400,31 +400,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') handleSendMessage();
   });
 
-  // Clear Chat button handler
-  if (clearChatBtn) {
-    clearChatBtn.addEventListener('click', async () => {
-      // Reset chat state
-      currentChatHistory = [];
-      hasShownLengthWarning = false;
-
-      // Clear UI
-      chatMessages.innerHTML = '<div class="chat-bubble system">Chat cleared. Load a product to start a new conversation.</div>';
-
-      // Reset button visibility
-      updateClearButtonVisibility();
-
-      // Persist cleared state
-      await saveChatSession();
-    });
+  // Simple markdown parser
+  function parseMarkdown(text) {
+    return text
+      // Bold: **text** or __text__
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.*?)__/g, '<strong>$1</strong>')
+      // Italic: *text* or _text_
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/_(.*?)_/g, '<em>$1</em>')
+      // Bullet lists: - item or * item
+      .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      // Line breaks
+      .replace(/\n/g, '<br>');
   }
 
-  function addChatMessage(role, text, scroll = true) {
+  // Typewriter effect: animates HTML by revealing characters progressively
+  async function typewriterEffect(element, html, speed = 10) {
+    // Set full HTML but hide text content initially
+    element.innerHTML = html;
+
+    // Get all text nodes in the element
+    const textNodes = [];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push({ node, fullText: node.textContent });
+      node.textContent = ''; // Hide initially
+    }
+
+    // Reveal text character by character across all text nodes
+    for (const { node, fullText } of textNodes) {
+      for (let i = 0; i < fullText.length; i++) {
+        node.textContent += fullText[i];
+
+        // Scroll to keep visible
+        if (i % 10 === 0) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        // Skip delay for spaces
+        if (fullText[i] !== ' ' && fullText[i] !== '\n') {
+          await new Promise(resolve => setTimeout(resolve, speed));
+        }
+      }
+    }
+  }
+
+  function addChatMessage(role, text, scroll = true, animate = true) {
     const div = document.createElement('div');
     div.className = `chat-bubble ${role}`;
-    div.textContent = text;
     const id = Date.now();
     div.dataset.msgId = id;
     chatMessages.appendChild(div);
+
+    if (role === 'assistant') {
+      const html = parseMarkdown(text);
+      if (animate) {
+        // Animate typing for new assistant messages
+        typewriterEffect(div, html);
+      } else {
+        // Instant render for restored messages
+        div.innerHTML = html;
+      }
+    } else {
+      // Plain text for user/system messages
+      div.textContent = text;
+    }
+
     if (scroll) chatMessages.scrollTop = chatMessages.scrollHeight;
 
     // Update clear button visibility after adding message
