@@ -745,3 +745,28 @@ body {
   font-size: 12px;
   line-height: 1.4;
 }
+
+/* Markdown styles inside chat bubbles */
+.chat-bubble strong {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.chat-bubble em {
+  font-style: italic;
+}
+
+.chat-bubble ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.chat-bubble li {
+  margin: 4px 0;
+  list-style-type: disc;
+}
+
+.chat-bubble br {
+  display: block;
+  margin: 4px 0;
+}
