@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="icons/icon128.png" width="128" alt="WhatFits Logo" />
+</div>
+
 # WhatFits
 
 **Your opinionated supplement advisor.** A Chrome extension that analyzes products on MyProtein and chats with you to see if they fit your specific fitness goals.
