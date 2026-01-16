@@ -170,9 +170,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startChatBtn = document.getElementById('start-chat-btn');
   const chatMessages = document.getElementById('chat-messages');
   const chatStatus = document.getElementById('chat-status-text');
+  const clearChatBtn = document.getElementById('clear-chat-btn');
 
   let currentChatHistory = [];
   let isChatActive = false;
+  let hasShownLengthWarning = false; // Only show warning once per session
+
+  // Count only user and assistant messages (not system messages)
+  function countConversationMessages() {
+    return currentChatHistory.filter(msg => msg.role === 'user' || msg.role === 'assistant').length;
+  }
+
+  // Update clear button visibility (show only when warning has been shown)
+  function updateClearButtonVisibility() {
+    if (clearChatBtn) {
+      clearChatBtn.style.display = hasShownLengthWarning ? 'block' : 'none';
+    }
+  }
 
   // Session persistence keys
   const SESSION_KEYS = {
@@ -311,6 +325,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         chatSendBtn.disabled = false;
         chatInput.focus();
 
+        // Update status indicator to green
+        const statusIndicator = document.querySelector('#chat .status-indicator');
+        if (statusIndicator) {
+          statusIndicator.classList.remove('warning', 'error');
+          statusIndicator.classList.add('success');
+        }
+
         if (chatStatus) {
           chatStatus.textContent = `Loaded: ${currentProductData?.title?.substring(0, 30) || 'Product'}...`;
         }
@@ -351,7 +372,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       const userContext = await getUserContext();
       const apiKey = await getApiKey();
 
-      const response = await chatWithProduct(currentChatHistory, currentProductData, previousProductData, userContext, apiKey);
+      // Sliding window: only send last 15 messages to API
+      const historyForApi = currentChatHistory.slice(-15);
+
+      const response = await chatWithProduct(historyForApi, currentProductData, previousProductData, userContext, apiKey);
 
       // Remove thinking indicator
       const thinkingEl = document.querySelector(`[data-msg-id="${thinkingId}"]`);
@@ -446,6 +470,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (scroll) chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Update clear button visibility after adding message
+    updateClearButtonVisibility();
+
+    // Show warning after 10 conversation messages (once per session)
+    if (!hasShownLengthWarning && countConversationMessages() >= 10) {
+      hasShownLengthWarning = true;
+      const warningDiv = document.createElement('div');
+      warningDiv.className = 'chat-bubble system warning';
+      warningDiv.textContent = '💡 Chat getting long. Consider clearing for better responses.';
+      chatMessages.appendChild(warningDiv);
+      if (scroll) chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
     return id;
   }
 });
