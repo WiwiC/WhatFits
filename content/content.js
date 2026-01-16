@@ -91,48 +91,108 @@ async function enrichCartItems(items) {
 }
 
 /**
+ * Extract product badges (dietary labels) from visible DOM
+ */
+function extractProductBadges(doc) {
+  const badges = [];
+  const badgeElements = doc.querySelectorAll('.badge.badge-neutral, .product-tags-container .badge');
+
+  for (const badge of badgeElements) {
+    const text = badge.textContent.trim();
+    if (text && !badges.includes(text)) {
+      badges.push(text);
+    }
+  }
+
+  return badges;
+}
+
+/**
+ * Extract product subtitle (short description near title)
+ */
+function extractProductSubtitle(doc) {
+  // Try specific MyProtein selector first
+  const subtitle = doc.querySelector('#product-details h2.text-gray-500, .product-subtitle, h2[class*="subtitle"]');
+  return subtitle ? subtitle.textContent.trim() : null;
+}
+
+/**
  * Extract product data from a specific document/context
- * Returns partial data with missing_data array for transparency
+ * Uses accordion HTML + DOM elements ONLY (no contentData JSON parsing)
  */
 function extractProductData(doc = document) {
   const data = {
     url: doc === document ? window.location.href : null,
     title: null,
+    subtitle: null,
     price: null,
-    ingredients: [],
-    claims: [],
+    missing_data: [],
+
+    // From DOM (badges near title)
+    badges: [],
+    diet: [],
+
+    // From Accordion HTML sections
+    description: null,
+    key_benefits: null,
+    why_choose: null,
+    usage: null,
+    ingredients: null,
+    nutrition_panel: null,
+    product_details: null,
+
+    // Legacy fields (for backward compatibility)
     dietaryInfo: [],
-    warnings: [],
-    missing_data: []
+    claims: [],
+    warnings: null,
+    brand: null,
+    dietary_suitability: null
   };
 
+  // 1. Extract basic info from DOM
   data.title = extractTitle(doc);
   if (!data.title) data.missing_data.push('title');
+
+  data.subtitle = extractProductSubtitle(doc);
 
   data.price = extractPrice(doc);
   if (!data.price) data.missing_data.push('price');
 
-  data.ingredients = extractSection(doc, ['ingrédients', 'ingredients']);
-  // Pass as array for backward compatibility with schema
-  data.ingredients = data.ingredients ? [data.ingredients] : [];
-  if (data.ingredients.length === 0) data.missing_data.push('ingredients');
+  data.badges = extractProductBadges(doc);
 
-  // New Sections requested by User
-  data.description = extractSection(doc, ['description', 'details']);
-  data.benefits = extractSection(doc, ['avantages', 'benefits', 'pourquoi choisir', 'why choose']);
-  data.usage = extractSection(doc, ['utilisation', 'usage', 'dosaggio', 'dosage']);
-  data.nutritional_info = extractSection(doc, ['information nutritionnelle', 'nutritional information', 'valeurs nutritionnelles']);
+  // 2. Extract ALL data from accordion HTML sections
+  data.description = extractAccordionSection(doc, 'description');
 
-  // Merge text into claims for backward compatibility
+  data.key_benefits = extractAccordionSection(doc, 'avantages clés') ||
+    extractAccordionSection(doc, 'key benefits');
+
+  data.why_choose = extractAccordionSection(doc, 'pourquoi choisir') ||
+    extractAccordionSection(doc, 'why choose');
+
+  data.usage = extractAccordionSection(doc, 'utilisation suggérée') ||
+    extractAccordionSection(doc, 'suggested use');
+
+  data.ingredients = extractAccordionSection(doc, 'ingrédients') ||
+    extractAccordionSection(doc, 'ingredients');
+  if (!data.ingredients) data.missing_data.push('ingredients');
+
+  data.nutrition_panel = extractAccordionSection(doc, 'information nutritionnelle') ||
+    extractAccordionSection(doc, 'nutritional information');
+
+  data.product_details = extractAccordionSection(doc, 'product details') ||
+    extractAccordionSection(doc, 'détails du produit');
+
+  // 3. Extract diet from badges (visible on page)
+  data.diet = data.badges;
+  data.dietaryInfo = data.badges;
+
+  // 4. Legacy claims for backward compatibility
   data.claims = [
     ...(data.description ? [`Description: ${data.description.substring(0, 300)}...`] : []),
-    ...(data.benefits ? [`Benefits: ${data.benefits.substring(0, 300)}...`] : [])
+    ...(data.key_benefits ? [`Benefits: ${data.key_benefits.substring(0, 300)}...`] : [])
   ];
-  if (data.claims.length === 0) data.missing_data.push('claims');
 
-  data.dietaryInfo = extractDietaryInfo(doc);
-  data.warnings = extractWarnings(doc);
-
+  console.log('[WhatFits] Extracted product data (accordion-only):', data);
   return data;
 }
 
@@ -183,165 +243,33 @@ function extractPrice(doc) {
   return null;
 }
 
+
+
 /**
- * Extract ingredients from specific 'Ingrédients' section
- * Returns raw text for LLM interpretation, avoiding regex filters and dangerous fallbacks.
+ * Extract content from a specific accordion section by its title
+ * Targets the MyProtein accordion-item custom elements
  */
-function extractIngredients(doc) {
-  let foundContent = null;
+function extractAccordionSection(doc, sectionTitle) {
+  const accordionItems = doc.querySelectorAll('accordion-item');
 
-  // Strategy 1: Look for explicit "Ingrédients" header/button
-  // This targets the accordion style shown in the user's screenshot
-  const headers = Array.from(doc.querySelectorAll('button, h2, h3, h4, th, strong, span, div[class*="title"]'));
+  for (const item of accordionItems) {
+    const titleEl = item.querySelector('.accordion-item-title');
+    if (!titleEl) continue;
 
-  for (const header of headers) {
-    const text = header.textContent.trim().toLowerCase();
-
-    // Strict match to find the actual section header, not just a mention
-    if (text === 'ingrédients' || text === 'ingredients' || text === 'ingredients:') {
-
-      // Case A: Content is the next sibling element (standard accordion)
-      let sibling = header.nextElementSibling;
-      while (sibling) {
-        // Skip empty spacers
-        if (sibling.textContent.trim().length > 5) {
-          foundContent = sibling.textContent.trim();
-          break;
-        }
-        sibling = sibling.nextElementSibling;
+    const title = titleEl.textContent.trim().toLowerCase();
+    if (title.includes(sectionTitle.toLowerCase())) {
+      const contentEl = item.querySelector('.content');
+      if (contentEl) {
+        // Return innerHTML to preserve tables and formatting for the LLM
+        // Clean up excessive whitespace but keep structure
+        return contentEl.innerHTML.replace(/\s+/g, ' ').trim();
       }
-
-      // Case B: Header is wrapped (e.g. <div class="header"><button>Ingredients</button></div>)
-      // So we check the parent's sibling
-      if (!foundContent && header.parentElement) {
-        let parentSibling = header.parentElement.nextElementSibling;
-        while (parentSibling) {
-          if (parentSibling.textContent.trim().length > 5) {
-            foundContent = parentSibling.textContent.trim();
-            break;
-          }
-          parentSibling = parentSibling.nextElementSibling;
-        }
-      }
-
-      if (foundContent) break;
     }
   }
-
-  // Strategy 2: Look for specific MyProtein content containers if Strategy 1 failed
-  if (!foundContent) {
-    const ingredientPanel = doc.querySelector('[id*="ingredient-panel"], [class*="product-ingredients"], [id="product-description-content-ingredients"]');
-    if (ingredientPanel) {
-      foundContent = ingredientPanel.textContent.trim();
-    }
-  }
-
-  if (foundContent) {
-    // Return the raw text, cleaned of excessive whitespace
-    // We do NOT filter by specific ingredient names anymore.
-    // We let the LLM parse this raw block.
-    return [foundContent.replace(/\s+/g, ' ')];
-  }
-
-  // CRITICAL: Do NOT fall back to scanning the whole body.
-  // Returning empty is better than hallucinating ingredients from the footer.
-  return [];
+  return null;
 }
 
-/**
- * Extract marketing claims from context
- */
-function extractClaims(doc) {
-  const claims = [];
-  const listItems = doc.querySelectorAll('li, [class*="benefit"], [class*="feature"]');
 
-  const claimPatterns = [
-    /\d+\s*g?\s*de?\s*protéines?/gi,
-    /\d+\s*kcal/gi,
-    /faible en/gi,
-    /riche en/gi,
-    /sans\s+\w+/gi,
-    /contribue?n?t?\s+(à|au)/gi,
-    /certifié/gi,
-    /informed choice/gi
-  ];
-
-  listItems.forEach(item => {
-    const text = item.textContent.trim();
-    if (text.length > 10 && text.length < 200) {
-      claimPatterns.forEach(pattern => {
-        if (pattern.test(text) && !claims.includes(text)) {
-          claims.push(text);
-        }
-      });
-    }
-  });
-
-  return claims.slice(0, 5);
-}
-
-/**
- * Extract dietary info from context
- */
-function extractDietaryInfo(doc) {
-  const info = [];
-  const pageText = doc.body.innerText.toLowerCase();
-
-  const dietaryLabels = [
-    { pattern: /végétarien/i, label: 'Vegetarian' },
-    { pattern: /végan|vegan/i, label: 'Vegan' },
-    { pattern: /sans gluten|gluten.?free/i, label: 'Gluten-free' },
-    { pattern: /sans lactose|lactose.?free/i, label: 'Lactose-free' },
-    { pattern: /informed choice/i, label: 'Informed Choice Certified' },
-    { pattern: /halal/i, label: 'Halal' }
-  ];
-
-  dietaryLabels.forEach(({ pattern, label }) => {
-    if (pattern.test(pageText)) {
-      info.push(label);
-    }
-  });
-
-  return info;
-}
-
-/**
- * Extract warnings from context
- */
-function extractWarnings(doc) {
-  const warnings = [];
-  const pageText = doc.body.innerText;
-
-  const sections = doc.querySelectorAll('div, section, p');
-  for (const section of sections) {
-    const text = section.textContent;
-    if (text.includes('allergènes') || text.includes('Fabriqué dans') ||
-      text.includes('peut contenir') || text.includes('gras')) {
-      const lines = text.split('\n').filter(line => line.trim().length > 0);
-      lines.forEach(line => {
-        if (line.includes('allergènes') || line.includes('Fabriqué') ||
-          line.includes('Lait') || line.includes('Soja') || line.includes('Gluten')) {
-          const cleaned = line.trim().substring(0, 200);
-          if (cleaned && !warnings.includes(cleaned)) {
-            warnings.push(cleaned);
-          }
-        }
-      });
-    }
-  }
-
-  const detectedAllergens = [];
-  if (pageText.includes('Lait') || pageText.includes('lait')) detectedAllergens.push('Lait (Milk)');
-  if (pageText.includes('Soja') || pageText.includes('soja')) detectedAllergens.push('Soja (Soy)');
-  if (pageText.includes('Gluten') || pageText.includes('gluten')) detectedAllergens.push('Gluten');
-  if (pageText.includes('œufs') || pageText.includes('Œufs')) detectedAllergens.push('Œufs (Eggs)');
-
-  if (detectedAllergens.length > 0 && warnings.length === 0) {
-    warnings.push('Contient ou fabriqué avec: ' + detectedAllergens.join(', '));
-  }
-
-  return warnings.slice(0, 3);
-}
 
 /**
  * Extract cart data - UPDATED TO GRAB URLS
@@ -469,45 +397,3 @@ function extractCartData() {
 
 // Log page type on load
 console.log('[WhatFits] Page type:', detectPageType());
-
-/**
- * Generic helper to extract content from an accordion/section by header name
- */
-function extractSection(doc, headerKeywords) {
-  let foundContent = null;
-  const headers = Array.from(doc.querySelectorAll('button, h2, h3, h4, h5, th, strong, span, div[class*="title"]'));
-
-  for (const header of headers) {
-    const text = header.textContent.trim().toLowerCase();
-
-    // Check if header matches any keyword
-    if (headerKeywords.some(k => text.includes(k) && text.length < 50)) {
-
-      // Strategy A: Next Sibling (Accordion style)
-      let sibling = header.nextElementSibling;
-      while (sibling) {
-        if (sibling.textContent.trim().length > 5) {
-          foundContent = sibling.textContent.trim();
-          break;
-        }
-        sibling = sibling.nextElementSibling;
-      }
-
-      // Strategy B: Parent's Sibling (Wrapped header)
-      if (!foundContent && header.parentElement) {
-        let parentSibling = header.parentElement.nextElementSibling;
-        while (parentSibling) {
-          if (parentSibling.textContent.trim().length > 5) {
-            foundContent = parentSibling.textContent.trim();
-            break;
-          }
-          parentSibling = parentSibling.nextElementSibling;
-        }
-      }
-
-      if (foundContent) break;
-    }
-  }
-
-  return foundContent ? foundContent.replace(/\s+/g, ' ').trim() : null;
-}
