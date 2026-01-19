@@ -671,6 +671,59 @@ body {
   cursor: pointer;
 }
 
+/* User Profile Section */
+.profile-section {
+  background: rgba(233, 69, 96, 0.05);
+  border-color: var(--accent);
+}
+
+.profile-inputs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.profile-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-field label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0;
+}
+
+.profile-field input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.profile-field input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.gender-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.gender-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
 /* Disabled Tab */
 .tab.disabled {
   opacity: 0.5;

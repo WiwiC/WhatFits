@@ -54,16 +54,23 @@ async function loadContext() {
   const apiKey = await getApiKey();
 
   if (context) {
-    // New Schema Loading
+    // User Profile fields
+    const ageEl = document.getElementById('profile-age');
+    const weightEl = document.getElementById('profile-weight');
+    const heightEl = document.getElementById('profile-height');
+    if (ageEl && context.age) ageEl.value = context.age;
+    if (weightEl && context.weight_kg) weightEl.value = context.weight_kg;
+    if (heightEl && context.height_cm) heightEl.value = context.height_cm;
+    setCheckedValues('gender', context.gender);
+
+    // Questionnaire fields
     setCheckedValues('primary_goal', context.primary_goal);
     setCheckedValues('training_frequency', context.training_frequency);
     setCheckedValues('training_style', context.training_style);
-    setCheckedValues('constraints', context.constraints);
     setCheckedValues('nutrition_priority', context.nutrition_priority);
     setCheckedValues('dietary_style', context.dietary_style);
     setCheckedValues('avoidances', context.avoidances);
-    setCheckedValues('supplement_stance', context.supplement_stance);
-    setCheckedValues('sustainability', context.sustainability);
+    setCheckedValues('supplements_intake', context.supplements_intake);
     setCheckedValues('current_focus', context.current_focus);
     setCheckedValues('mental_focus', context.mental_focus);
     setCheckedValues('joint_protection', context.joint_protection);
@@ -84,26 +91,33 @@ contextForm.addEventListener('submit', async (e) => {
 
   const dietaryStyle = getCheckedValues('dietary_style');
 
-  // Construct new schema object
+  // Get profile values
+  const ageVal = document.getElementById('profile-age').value;
+  const weightVal = document.getElementById('profile-weight').value;
+  const heightVal = document.getElementById('profile-height').value;
+
+  // Construct context object (Schema v3)
   const context = {
+    // User Profile
+    age: ageVal ? parseInt(ageVal, 10) : null,
+    weight_kg: weightVal ? parseInt(weightVal, 10) : null,
+    height_cm: heightVal ? parseInt(heightVal, 10) : null,
+    gender: getCheckedValues('gender')[0] || '',
+
+    // Questionnaire
     primary_goal: getCheckedValues('primary_goal'),
-    training_frequency: getCheckedValues('training_frequency')[0] || '', // Radio
+    training_frequency: getCheckedValues('training_frequency')[0] || '',
     training_style: getCheckedValues('training_style'),
-    constraints: getCheckedValues('constraints'),
     nutrition_priority: getCheckedValues('nutrition_priority'),
     dietary_style: dietaryStyle,
     avoidances: getCheckedValues('avoidances'),
-    supplement_stance: getCheckedValues('supplement_stance')[0] || '', // Radio
-    sustainability: getCheckedValues('sustainability')[0] || '', // Radio
-    current_focus: getCheckedValues('current_focus')[0] || '', // Radio
-    mental_focus: getCheckedValues('mental_focus')[0] || '', // Radio
+    supplements_intake: getCheckedValues('supplements_intake')[0] || '',
+    current_focus: getCheckedValues('current_focus')[0] || '',
+    mental_focus: getCheckedValues('mental_focus')[0] || '',
     joint_protection: getCheckedValues('joint_protection'),
     additional_context: document.getElementById('additional-context').value.trim(),
 
     // Legacy/Computed fields for Rule Engine compatibility
-    // We infer 'vegan' if selected in dietary_style.
-    // Gluten/Lactose checks will strictly only fire if we had those explicit inputs, which we don't anymore.
-    // This is intended behavior per user request.
     dietary: dietaryStyle.includes('vegan') ? ['vegan'] : []
   };
 
