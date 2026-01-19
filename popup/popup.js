@@ -379,8 +379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentChatHistory.push(userMsg);
     await saveChatSession();
 
-    // Show persistent "Thinking..." indicator
-    const thinkingId = addChatMessage('system', 'Thinking...');
+    // Create assistant bubble immediately (empty) for streaming
+    const assistantDiv = document.createElement('div');
+    assistantDiv.className = 'chat-bubble assistant';
+    assistantDiv.dataset.msgId = Date.now();
+    chatMessages.appendChild(assistantDiv);
+
+    let streamedContent = '';
 
     try {
       const userContext = await getUserContext();
@@ -389,23 +394,44 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Sliding window: only send last 15 messages to API
       const historyForApi = currentChatHistory.slice(-15);
 
-      const response = await chatWithProduct(historyForApi, currentProductData, previousProductData, userContext, apiKey);
+      // Stream callback: append each chunk as raw text
+      const onChunk = (chunk) => {
+        streamedContent += chunk;
+        assistantDiv.textContent = streamedContent;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      };
 
-      // Remove thinking indicator
-      const thinkingEl = document.querySelector(`[data-msg-id="${thinkingId}"]`);
-      if (thinkingEl) thinkingEl.remove();
+      const response = await chatWithProduct(historyForApi, currentProductData, previousProductData, userContext, apiKey, onChunk);
 
-      // Add AI Response and persist
-      addChatMessage('assistant', response.content);
+      // Stream complete: parse markdown and replace content
+      const html = parseMarkdown(response.content);
+      assistantDiv.innerHTML = html;
+
+      // Add to history and persist
       currentChatHistory.push(response);
       await saveChatSession();
 
+      // Update clear button visibility
+      updateClearButtonVisibility();
+
+      // Show warning after 10 conversation messages (once per session)
+      if (!hasShownLengthWarning && countConversationMessages() >= 10) {
+        hasShownLengthWarning = true;
+        const warningDiv = document.createElement('div');
+        warningDiv.className = 'chat-bubble system warning';
+        warningDiv.textContent = '💡 Chat getting long. Consider clearing for better responses.';
+        chatMessages.appendChild(warningDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
     } catch (err) {
-      addChatMessage('system', 'Error connecting to AI.');
+      assistantDiv.textContent = 'Error connecting to AI.';
+      assistantDiv.classList.add('error');
       console.error(err);
     } finally {
       chatInput.disabled = false;
       chatInput.focus();
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
   }
 
@@ -430,39 +456,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/\n/g, '<br>');
   }
 
-  // Typewriter effect: animates HTML by revealing characters progressively
-  async function typewriterEffect(element, html, speed = 15) {
-    // Set full HTML but hide text content initially
-    element.innerHTML = html;
-
-    // Get all text nodes in the element
-    const textNodes = [];
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    while (node = walker.nextNode()) {
-      textNodes.push({ node, fullText: node.textContent });
-      node.textContent = ''; // Hide initially
-    }
-
-    // Reveal text character by character across all text nodes
-    for (const { node, fullText } of textNodes) {
-      for (let i = 0; i < fullText.length; i++) {
-        node.textContent += fullText[i];
-
-        // Scroll to keep visible
-        if (i % 10 === 0) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
-
-        // Skip delay for spaces
-        if (fullText[i] !== ' ' && fullText[i] !== '\n') {
-          await new Promise(resolve => setTimeout(resolve, speed));
-        }
-      }
-    }
-  }
-
-  function addChatMessage(role, text, scroll = true, animate = true) {
+  function addChatMessage(role, text, scroll = true) {
     const div = document.createElement('div');
     div.className = `chat-bubble ${role}`;
     const id = Date.now();
@@ -470,14 +464,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     chatMessages.appendChild(div);
 
     if (role === 'assistant') {
-      const html = parseMarkdown(text);
-      if (animate) {
-        // Animate typing for new assistant messages
-        typewriterEffect(div, html);
-      } else {
-        // Instant render for restored messages
-        div.innerHTML = html;
-      }
+      // Parse markdown and render instantly (streaming handles animation for new messages)
+      div.innerHTML = parseMarkdown(text);
     } else {
       // Plain text for user/system messages
       div.textContent = text;
