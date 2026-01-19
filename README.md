@@ -4,14 +4,14 @@
 
 # WhatFits
 
-**Your opinionated supplement advisor.** A Chrome extension that analyzes products on MyProtein and chats with you to see if they fit your specific fitness goals.
+**Your supplement advisor.** A Chrome extension that analyzes products on MyProtein (more to come) and chats with you to see if they fit your specific goals.
 
 ## Core Features
 
 - **Chat-First Experience**: Instead of static reports, chat directly with the product. Ask "Is this good for my bad knees?" or "Does this have hidden sugars?"
 - **Opinionated Analysis**: Acts as a critical expert. It checks protein density, marketing vs. reality, and ingredient quality. It won't sugarcoat the truth.
-- **Deep Data Extraction**: Extracts hidden details like **Nutrition Panels** and **Ingredient Lists** directly from page accordions to find what marketing hides.
-- **Privacy Focused**: Data stays local. API keys are stored in your browser only.
+- **Deep Data Extraction**: Extracts all details like **Nutrition Panels** and **Ingredient Lists** directly from page accordions to find what marketing hides.
+- **Privacy Focused**: Your data stays local and in your ChatGPT account. API keys are stored in your browser only.
 
 ---
 
@@ -40,6 +40,10 @@ cd WhatFits
 2. Go to the **Profile** tab and complete your profile
 3. Enter your **OpenAI API Key** (starts with `sk-...`)
 4. Fill in your fitness profile:
+   - Age
+   - Weight
+   - Height
+   - Gender
    - Goals (e.g., Muscle Gain, Weight Loss)
    - Dietary restrictions (e.g., Vegetarian, Lactose-free)
    - Constraints (e.g., Joint Issues, Avoid Stimulants)
@@ -48,7 +52,7 @@ cd WhatFits
 #### 4. Start Chatting!
 1. Navigate to any product on [fr.myprotein.com](https://fr.myprotein.com)
 2. Click the WhatFits extension icon
-3. Click **"Start Chat"** to load the product
+3. Click **"Start Chat"** to load the product data of the page and start the discussion
 4. Ask questions like:
    - *"Does this product suits my goals?"*
    - *"Is this good for muscle recovery?"*
@@ -59,14 +63,10 @@ cd WhatFits
 
 ## How It Works
 
-1. **Data Extraction**: Pulls product data from MyProtein pages:
-   - DOM Elements: Badges, titles, prices
-   - Accordion HTML: Ingredients, Nutrition panels (preserves tables and allergen highlights)
-
-2. **Context-Aware LLM**:
+**Context-Aware LLM**:
    - Uses `gpt-4.1-mini` for fast, cost-effective analysis
-   - Injects your fitness profile into every prompt
-   - Compares marketing claims vs. actual nutrition data
+   - Injects your fitness profile and context
+   - Use actual nutrition data and ingredient list to answer your questions
 
 ---
 
