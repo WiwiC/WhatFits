@@ -17,8 +17,9 @@
 
     <nav class="tabs">
       <button class="tab active" data-tab="chat">Ask Agent</button>
-      <button class="tab disabled" data-tab="cart" disabled>Cart Analysis (soon)</button>
-      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab disabled" data-tab="cart" disabled>Cart Analysis <span class="coming-soon-badge">(Coming
+          Soon)</span></button>
+      <button class="tab" data-tab="settings">Profile</button>
     </nav>
 
     <main class="content">
@@ -33,20 +34,20 @@
         </div>
         <div id="chat-messages" class="chat-messages">
           <div class="chat-bubble system">
-            Navigate to a product page and click "Load Product" to start asking questions!
+            Navigate to a product page and click "Start Chat" to start asking questions!
           </div>
         </div>
         <div class="chat-input-area">
           <input type="text" id="chat-input" placeholder="Ask about ingredients, timing..." disabled>
           <button id="chat-send" disabled>➤</button>
         </div>
-        <button id="start-chat-btn" class="btn-primary" disabled>Load Product</button>
+        <button id="start-chat-btn" class="btn-primary" disabled>Start Chat</button>
       </section>
 
       <!-- Cart Tab (Coming Soon) -->
       <section id="cart" class="tab-content">
         <div class="coming-soon-placeholder">
-          <h3>🛒 Cart Coherence</h3>
+          <h3>🛒 Cart Analysis</h3>
           <p>Coming soon! This feature will analyze your entire cart for redundancies and goal alignment.</p>
         </div>
       </section>
@@ -56,9 +57,34 @@
         <form id="context-form">
           <div class="questions-container">
 
+            <!-- User Profile -->
+            <fieldset class="question-group profile-section">
+              <legend>User Profile</legend>
+              <div class="profile-inputs">
+                <div class="profile-field">
+                  <label for="profile-age">Age</label>
+                  <input type="number" id="profile-age" name="age" min="13" max="120" placeholder="e.g. 30">
+                </div>
+                <div class="profile-field">
+                  <label for="profile-weight">Weight (kg)</label>
+                  <input type="number" id="profile-weight" name="weight_kg" min="30" max="300" placeholder="e.g. 75">
+                </div>
+                <div class="profile-field">
+                  <label for="profile-height">Height (cm)</label>
+                  <input type="number" id="profile-height" name="height_cm" min="100" max="250" placeholder="e.g. 175">
+                </div>
+              </div>
+              <div class="gender-options">
+                <span class="gender-label">Gender:</span>
+                <label><input type="radio" name="gender" value="male"> Male</label>
+                <label><input type="radio" name="gender" value="female"> Female</label>
+                <label><input type="radio" name="gender" value="prefer_not_to_say"> Prefer not to say</label>
+              </div>
+            </fieldset>
+
             <!-- Q1 -->
             <fieldset class="question-group">
-              <legend>1. Primary goal (pick up to 2)</legend>
+              <legend>1. Primary goals</legend>
               <label><input type="checkbox" name="primary_goal" value="muscle_gain"> Muscle gain / physique</label>
               <label><input type="checkbox" name="primary_goal" value="fat_loss"> Fat loss</label>
               <label><input type="checkbox" name="primary_goal" value="strength"> Strength</label>
@@ -79,29 +105,20 @@
 
             <!-- Q3 -->
             <fieldset class="question-group">
-              <legend>3. Training style (all that apply)</legend>
+              <legend>3. Training style</legend>
               <label><input type="checkbox" name="training_style" value="free_weights"> Free weights</label>
               <label><input type="checkbox" name="training_style" value="machines"> Machines</label>
               <label><input type="checkbox" name="training_style" value="bodyweight"> Bodyweight</label>
               <label><input type="checkbox" name="training_style" value="cardio"> Cardio (running, cycling)</label>
               <label><input type="checkbox" name="training_style" value="functional"> Functional / hybrid</label>
-              <label><input type="checkbox" name="training_style" value="hiit"> Short intense sessions</label>
+              <label><input type="checkbox" name="training_style" value="hiit"> Short intense sessions (HIT)</label>
             </fieldset>
 
             <!-- Q4 -->
             <fieldset class="question-group">
-              <legend>4. Constraints (all that apply)</legend>
-              <label><input type="checkbox" name="constraints" value="time_limited"> Time-limited sessions</label>
-              <label><input type="checkbox" name="constraints" value="joint_issues"> Joint / back sensitivity</label>
-              <label><input type="checkbox" name="constraints" value="recovery_priority"> Recovery is a priority</label>
-              <label><input type="checkbox" name="constraints" value="minimal_equipment"> Minimal equipment</label>
-              <label><input type="checkbox" name="constraints" value="travel"> Travel / inconsistent schedule</label>
-            </fieldset>
-
-            <!-- Q5 -->
-            <fieldset class="question-group">
-              <legend>5. Nutrition priority (pick up to 2)</legend>
-              <label><input type="checkbox" name="nutrition_priority" value="muscle_support"> Muscle support</label>
+              <legend>4. Nutrition priority</legend>
+              <label><input type="checkbox" name="nutrition_priority" value="muscle_gain_support"> Muscle gain and
+                support</label>
               <label><input type="checkbox" name="nutrition_priority" value="fat_loss"> Fat loss</label>
               <label><input type="checkbox" name="nutrition_priority" value="energy_focus"> Energy / focus</label>
               <label><input type="checkbox" name="nutrition_priority" value="digestion"> Digestive comfort</label>
@@ -109,18 +126,19 @@
                 load</label>
             </fieldset>
 
-            <!-- Q6 -->
+            <!-- Q5 -->
             <fieldset class="question-group">
-              <legend>6. Dietary style (all that apply)</legend>
-              <label><input type="checkbox" name="dietary_style" value="mixed"> Flexible / no strict rules</label>
+              <legend>5. Dietary</legend>
+              <label><input type="checkbox" name="dietary_style" value="flexible"> Flexible / no strict rules</label>
               <label><input type="checkbox" name="dietary_style" value="high_protein"> High-protein focused</label>
               <label><input type="checkbox" name="dietary_style" value="whole_foods"> Whole foods oriented</label>
+              <label><input type="checkbox" name="dietary_style" value="lactose_free"> Lactose free</label>
               <label><input type="checkbox" name="dietary_style" value="vegan"> Vegan</label>
             </fieldset>
 
-            <!-- Q7 -->
+            <!-- Q6 -->
             <fieldset class="question-group">
-              <legend>7. Avoidances</legend>
+              <legend>6. Avoidances</legend>
               <label><input type="checkbox" name="avoidances" value="ultra_processed"> Ultra-processed foods</label>
               <label><input type="checkbox" name="avoidances" value="added_sugars"> Added sugars</label>
               <label><input type="checkbox" name="avoidances" value="artificial_sweeteners"> Artificial
@@ -129,49 +147,38 @@
               <label><input type="checkbox" name="avoidances" value="none"> None</label>
             </fieldset>
 
+            <!-- Q7 -->
+            <fieldset class="question-group">
+              <legend>7. Supplements intake</legend>
+              <label><input type="radio" name="supplements_intake" value="regular_user"> Use some regularly</label>
+              <label><input type="radio" name="supplements_intake" value="occasionally"> Use some occasionally</label>
+              <label><input type="radio" name="supplements_intake" value="previously_used"> Already took in the
+                past</label>
+              <label><input type="radio" name="supplements_intake" value="never_used"> Never used</label>
+            </fieldset>
+
             <!-- Q8 -->
             <fieldset class="question-group">
-              <legend>8. Supplements stance</legend>
-              <label><input type="radio" name="supplement_stance" value="regular_user"> Already use some
-                regularly</label>
-              <label><input type="radio" name="supplement_stance" value="open_cautious"> Open but cautious</label>
-              <label><input type="radio" name="supplement_stance" value="evidence_based"> Only if evidence-based</label>
-              <label><input type="radio" name="supplement_stance" value="prefer_none"> Prefer none</label>
-            </fieldset>
-
-            <!-- Q9 -->
-            <fieldset class="question-group">
-              <legend>9. Effort vs sustainability</legend>
-              <label><input type="radio" name="sustainability" value="max_results"> Max results, even if
-                demanding</label>
-              <label><input type="radio" name="sustainability" value="balanced"> Balanced results & lifestyle</label>
-              <label><input type="radio" name="sustainability" value="sustainability_first"> Long-term sustainability
-                first</label>
-            </fieldset>
-
-            <!-- Q10 -->
-            <fieldset class="question-group">
-              <legend>10. Current priority (pick 1)</legend>
+              <legend>8. Current priority (pick 1)</legend>
               <label><input type="radio" name="current_focus" value="visible_progress"> Visible progress</label>
               <label><input type="radio" name="current_focus" value="feeling_better"> Feeling better day-to-day</label>
               <label><input type="radio" name="current_focus" value="performance"> Performance</label>
               <label><input type="radio" name="current_focus" value="consistency"> Consistency / habit building</label>
             </fieldset>
 
-            <!-- Q11 -->
+            <!-- Q9 -->
             <fieldset class="question-group">
-              <legend>11. Mental performance</legend>
+              <legend>9. Mental performance</legend>
               <label><input type="radio" name="mental_focus" value="not_priority"> Not a priority</label>
               <label><input type="radio" name="mental_focus" value="work_energy"> Important for work / daily
                 energy</label>
-              <label><input type="radio" name="mental_focus" value="training_focus"> Important during training</label>
               <label><input type="radio" name="mental_focus" value="both"> Both work and training</label>
               <label><input type="radio" name="mental_focus" value="struggling"> Actively struggling with focus</label>
             </fieldset>
 
-            <!-- Q12 -->
+            <!-- Q10 -->
             <fieldset class="question-group">
-              <legend>12. Joints & tendons protection</legend>
+              <legend>10. Joints & tendons protection</legend>
               <label><input type="checkbox" name="joint_protection" value="none"> None</label>
               <label><input type="checkbox" name="joint_protection" value="knees"> Knees</label>
               <label><input type="checkbox" name="joint_protection" value="lower_back"> Lower back</label>
@@ -185,12 +192,22 @@
             <div class="form-group">
               <label for="additional-context">Additional Context (max 500 characters)</label>
               <textarea id="additional-context" maxlength="500"
-                placeholder="e.g. I have a sensitive stomach, I prefer natural sweeteners, I'm training for a marathon..."></textarea>
+                placeholder="e.g. I have a sensitive stomach, I have pain in my shoulders, I prefer natural sweeteners, I'm training for a marathon..."></textarea>
             </div>
 
             <div class="form-group">
               <label for="api-key">OpenAI API Key</label>
               <input type="password" id="api-key" placeholder="sk-...">
+            </div>
+
+            <div class="form-group coming-soon-field">
+              <label for="gemini-key">Gemini API Key <span class="coming-soon-badge">(Coming Soon)</span></label>
+              <input type="password" id="gemini-key" placeholder="..." disabled>
+            </div>
+
+            <div class="form-group coming-soon-field">
+              <label for="claude-key">Claude API Key <span class="coming-soon-badge">(Coming Soon)</span></label>
+              <input type="password" id="claude-key" placeholder="..." disabled>
             </div>
 
             <button type="submit" class="btn-primary">Save Context</button>
