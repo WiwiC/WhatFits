@@ -10,7 +10,7 @@
 
 - **Chat-First Experience**: Instead of static reports, chat directly with the product. Ask "Is this good for my bad knees?" or "Does this have hidden sugars?"
 - **Opinionated Analysis**: Acts as a critical expert. It checks protein density, marketing vs. reality, and ingredient quality. It won't sugarcoat the truth.
-- **Deep Data Extraction**: Extracts all details like **Nutrition Panels** and **Ingredient Lists** directly from page accordions to find what marketing hides.
+- **Deep Data Extraction**: Extracts all details like **Nutrition Panels** and **Ingredient Lists** directly from the page.
 - **Privacy Focused**: Your data stays local and in your ChatGPT account. API keys are stored in your browser only.
 
 ---
