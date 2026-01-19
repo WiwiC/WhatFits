@@ -15,6 +15,27 @@
 
 ---
 
+## Screenshots
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><strong>Profile Setup</strong></td>
+      <td align="center"><strong>Chat Interface</strong></td>
+    </tr>
+    <tr>
+      <td><img src="icons/screenshots/Profile_1.png" width="300" alt="Profile Setup 1" /></td>
+      <td><img src="icons/screenshots/Chat_1.png" width="300" alt="Chat Example 1" /></td>
+    </tr>
+    <tr>
+      <td><img src="icons/screenshots/Profile_2.png" width="300" alt="Profile Setup 2" /></td>
+      <td><img src="icons/screenshots/Chat_2.png" width="300" alt="Chat Example 2" /></td>
+    </tr>
+  </table>
+</div>
+
+---
+
 ## Installation (Local Development)
 
 ### Prerequisites
