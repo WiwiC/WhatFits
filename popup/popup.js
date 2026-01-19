@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Typewriter effect: animates HTML by revealing characters progressively
-  async function typewriterEffect(element, html, speed = 10) {
+  async function typewriterEffect(element, html, speed = 5) {
     // Set full HTML but hide text content initially
     element.innerHTML = html;
 
