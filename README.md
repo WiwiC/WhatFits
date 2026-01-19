@@ -68,6 +68,8 @@ cd WhatFits
    - Injects your fitness profile and context
    - Use actual nutrition data and ingredient list to answer your questions
 
+> 💡 **Tip:** You can customize the AI's behavior by editing the system prompt in [`lib/llm.js`](lib/llm.js)
+
 ---
 
 ## Supported Merchant
